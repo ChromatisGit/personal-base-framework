@@ -37,7 +37,7 @@ function normalizeQueryRows(result: unknown): Array<Record<string, unknown>> {
 function getWorkerSetupQuery(queryable: NeonQueryClient): SetupQueryExecutor {
   return async (statement, values) => {
     const result = await queryable.query(statement, values as any[]);
-    return normalizeQueryRows(result) as unknown[];
+    return normalizeQueryRows(result);
   };
 }
 
