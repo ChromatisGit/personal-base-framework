@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
+import { Toaster } from "../primitives/Toast.js";
 import { useLocation, useNavigate } from "react-router";
 import { Menu } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -164,6 +165,8 @@ export function Layout({
       {mobilePattern === "top-tabs" && (
         <MobileMenu brand={brand} isOpen={menuOpen} onClose={onMenuClose} navItems={menuNavItems} />
       )}
+
+      <Toaster />
     </div>
   );
 }

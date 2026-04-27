@@ -49,6 +49,21 @@
   --sidebar-ring: #818cf8;
   --success: #10b981;
   --success-light: #d1fae5;
+
+  /* Spacing scale — use these in CSS that can't use Tailwind utility classes */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 12px 0 rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 10px 30px 0 rgb(0 0 0 / 0.12);
 }
 
 .dark {
@@ -82,6 +97,10 @@
   --sidebar-ring: #818cf8;
   --success: #34d399;
   --success-light: #065f46;
+
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.2);
+  --shadow-md: 0 4px 12px 0 rgb(0 0 0 / 0.25);
+  --shadow-lg: 0 10px 30px 0 rgb(0 0 0 / 0.35);
 }
 
 @theme inline {
