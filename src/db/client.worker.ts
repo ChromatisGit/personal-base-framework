@@ -5,7 +5,7 @@ import { createSqlTag } from "./sql-tag.js";
 import type { DbAdapter, DbSql, UserCtx } from "./types.js";
 
 type NeonQueryClient = {
-  query: (query: string, params?: any[]) => Promise<unknown>;
+  query: (query: string, params?: unknown[]) => Promise<unknown>;
 };
 
 const neonClients = new Map<string, NeonQueryClient>();
@@ -36,7 +36,7 @@ function normalizeQueryRows(result: unknown): Array<Record<string, unknown>> {
 
 function getWorkerSetupQuery(queryable: NeonQueryClient): SetupQueryExecutor {
   return async (statement, values) => {
-    const result = await queryable.query(statement, values as any[]);
+    const result = await queryable.query(statement, values ? [...values] : undefined);
     return normalizeQueryRows(result);
   };
 }
@@ -90,7 +90,7 @@ async function runInNeonTransaction<T>(
         [userId, role, groupKey],
       );
       const txSql = createSqlTag(async (query) => {
-        const result = await client.query(query.text, query.values as any[]);
+        const result = await client.query(query.text, query.values);
         return normalizeQueryRows(result) as unknown[];
       });
       const result = await fn(txSql);

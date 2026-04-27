@@ -25,9 +25,13 @@ export function SwipeTabs({ tabs, defaultValue, value: controlledValue, onChange
   const breakpoint = useBreakpoint()
 
   const touchStartX = useRef<number | null>(null)
-  const prevIndexRef = useRef(activeIndex)
+  const [direction, setDirection] = useState(1)
 
   function setTab(value: string) {
+    const nextIndex = tabs.findIndex((tab) => tab.value === value)
+    if (nextIndex !== -1 && activeIndex !== -1) {
+      setDirection(nextIndex >= activeIndex ? 1 : -1)
+    }
     if (controlledValue === undefined) setInternalValue(value)
     onChange?.(value)
   }
@@ -44,15 +48,14 @@ export function SwipeTabs({ tabs, defaultValue, value: controlledValue, onChange
     const SWIPE_THRESHOLD = 60
 
     if (delta > SWIPE_THRESHOLD && activeIndex < tabs.length - 1) {
-      setTab(tabs[activeIndex + 1]!.value)
+      const nextTab = tabs[activeIndex + 1]
+      if (nextTab) setTab(nextTab.value)
     } else if (delta < -SWIPE_THRESHOLD && activeIndex > 0) {
-      setTab(tabs[activeIndex - 1]!.value)
+      const previousTab = tabs[activeIndex - 1]
+      if (previousTab) setTab(previousTab.value)
     }
     touchStartX.current = null
   }
-
-  const direction = activeIndex >= prevIndexRef.current ? 1 : -1
-  prevIndexRef.current = activeIndex
 
   const xEnter = reduced ? 0 : direction * 40
   const xExit = reduced ? 0 : direction * -40

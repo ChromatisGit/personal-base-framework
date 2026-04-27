@@ -219,7 +219,7 @@ async function runEnsureDatabaseReady(options: EnsureDatabaseReadyOptions): Prom
       }
 
       const lockedState = await probeDatabaseState(query);
-      let appliedVersions = new Set(lockedState.appliedVersions);
+      const appliedVersions = new Set(lockedState.appliedVersions);
 
       if (!appliedVersions.has(baselineMigration.version)) {
         await applyBaseline(options.context, query, appliedVersions);

@@ -54,20 +54,26 @@ export function Layout({
 
   function handleTouchStart(e: React.TouchEvent) {
     if (!isMainView) return;
-    touchStartX.current = e.touches[0]!.clientX;
-    touchStartY.current = e.touches[0]!.clientY;
+    const touch = e.touches[0];
+    if (!touch) return;
+    touchStartX.current = touch.clientX;
+    touchStartY.current = touch.clientY;
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
     if (!isMainView) return;
-    const deltaX = touchStartX.current - e.changedTouches[0]!.clientX;
-    const deltaY = touchStartY.current - e.changedTouches[0]!.clientY;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    const deltaX = touchStartX.current - touch.clientX;
+    const deltaY = touchStartY.current - touch.clientY;
     const minSwipeDistance = 50;
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
       if (deltaX > 0 && currentMainIndex < mainNavItems.length - 1) {
-        handleNavigate(mainNavItems[currentMainIndex + 1]!.path);
+        const nextItem = mainNavItems[currentMainIndex + 1];
+        if (nextItem) handleNavigate(nextItem.path);
       } else if (deltaX < 0 && currentMainIndex > 0) {
-        handleNavigate(mainNavItems[currentMainIndex - 1]!.path);
+        const previousItem = mainNavItems[currentMainIndex - 1];
+        if (previousItem) handleNavigate(previousItem.path);
       }
     }
   }

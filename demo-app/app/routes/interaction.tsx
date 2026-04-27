@@ -3,7 +3,7 @@ import {
   Page, PageHeader, Section, Stack, Inline,
   ActionSurface, ActionBar, BottomActionBar,
   ConfirmAction, SheetOrPopover,
-  Button, Badge, DataList, DataListItem,
+  Button, DataList, DataListItem,
   toast,
 } from "@platform/framework"
 import { Trash2, Edit, Download, MoreHorizontal, Bell, Star, Share2 } from "lucide-react"

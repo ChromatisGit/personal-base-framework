@@ -65,13 +65,13 @@ export async function getAuthenticatedUser(
     const stored = rows[0];
     const ok = stored ? await verifyPin(pin, stored.pin_hash) : false;
 
-    if (ok) {
+    if (stored && ok) {
       await Promise.all([checkAttempt(ipKey, true), checkAttempt(codeKey, true)]);
       return {
-        id: stored!.id,
-        role: stored!.role,
-        groupKey: stored!.group_key,
-        courseIds: stored!.course_ids,
+        id: stored.id,
+        role: stored.role,
+        groupKey: stored.group_key,
+        courseIds: stored.course_ids,
       };
     }
 

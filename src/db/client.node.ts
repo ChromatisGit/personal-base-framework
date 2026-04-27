@@ -14,7 +14,7 @@ function getLocalPool() {
 }
 
 type PostgresQueryable = {
-  unsafe: (query: string, params?: any[]) => Promise<unknown[]>;
+  unsafe: (query: string, params?: postgres.ParameterOrJSON<never>[]) => Promise<unknown[]>;
 };
 
 async function executeNodeQuery(
@@ -22,7 +22,7 @@ async function executeNodeQuery(
   statement: string,
   values: readonly unknown[] = [],
 ): Promise<Array<Record<string, unknown>>> {
-  const rows = await queryable.unsafe(statement, [...values]);
+  const rows = await queryable.unsafe(statement, [...values] as postgres.ParameterOrJSON<never>[]);
   return rows as Array<Record<string, unknown>>;
 }
 
@@ -60,7 +60,7 @@ async function setRlsContext(
 
 function makeTxSql(tx: postgres.TransactionSql): DbSql {
   return createSqlTag(async (query) => {
-    const rows = await tx.unsafe(query.text, query.values as any[]);
+    const rows = await tx.unsafe(query.text, query.values as postgres.ParameterOrJSON<never>[]);
     return rows as unknown[];
   });
 }

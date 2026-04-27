@@ -21,7 +21,10 @@ export async function withUserTx<T>(user: UserCtx, fn: (sql: DbSql) => Promise<T
  * Use for: public reads, SECURITY DEFINER calls, login, registration.
  */
 export const anonSQL: DbSql = ((template: TemplateStringsArray, ...params: unknown[]) =>
-  withAnonTx((sql) => (sql as any)(template, ...params))) as unknown as DbSql;
+  withAnonTx((sql) => {
+    const execute = sql as (template: TemplateStringsArray, ...params: unknown[]) => Promise<unknown[]>;
+    return execute(template, ...params);
+  })) as unknown as DbSql;
 
 /**
  * Returns a tagged template with full RLS context set (user_id, role, group_key).
@@ -32,5 +35,8 @@ export const anonSQL: DbSql = ((template: TemplateStringsArray, ...params: unkno
  */
 export function userSQL(user: UserCtx): DbSql {
   return ((template: TemplateStringsArray, ...params: unknown[]) =>
-    withUserTx(user, (sql) => (sql as any)(template, ...params))) as unknown as DbSql;
+    withUserTx(user, (sql) => {
+      const execute = sql as (template: TemplateStringsArray, ...params: unknown[]) => Promise<unknown[]>;
+      return execute(template, ...params);
+    })) as unknown as DbSql;
 }
