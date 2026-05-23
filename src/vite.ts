@@ -19,7 +19,7 @@ export async function createViteConfig(options: ViteConfigOptions = {}): Promise
     corePlugins.push(tailwindcss());
   }
 
-  corePlugins.push(reactRouter(), tsconfigPaths());
+  corePlugins.push(reactRouter(), tsconfigPaths({ root: "." }));
 
   if (isCloudflare) {
     const { cloudflare: cfPlugin } = await import("@cloudflare/vite-plugin");
