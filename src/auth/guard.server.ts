@@ -1,5 +1,5 @@
 import { getSessionCookie } from "./cookie.server.js";
-import type { UserDTO, Session } from "./types.js";
+import type { UserDTO } from "./types.js";
 
 export function requireSessionCookie(
   request: Request,

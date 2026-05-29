@@ -50,7 +50,7 @@ export function RegisterForm({
             autoComplete="username"
             required
             disabled={isPending}
-            error={status === "username_taken" ? "This username is already taken." : undefined}
+            {...(status === "username_taken" ? { error: "This username is already taken." } : {})}
           />
           <Input
             label="PIN"
@@ -69,7 +69,7 @@ export function RegisterForm({
             autoComplete="new-password"
             required
             disabled={isPending}
-            error={status === "pin_mismatch" ? "PINs do not match." : undefined}
+            {...(status === "pin_mismatch" ? { error: "PINs do not match." } : {})}
           />
           <Button type="submit" size="lg" className="w-full mt-1" disabled={isPending}>
             {isPending ? "Creating account…" : submitLabel}

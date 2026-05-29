@@ -44,7 +44,7 @@ export function LoginForm({
             autoComplete="current-password"
             required
             disabled={isPending}
-            error={error ? (errorMessages[error] ?? error) : undefined}
+            {...(error ? { error: errorMessages[error] ?? error } : {})}
           />
           <Button type="submit" size="lg" className="w-full mt-1" disabled={isPending}>
             {isPending ? "Signing in…" : submitLabel}
