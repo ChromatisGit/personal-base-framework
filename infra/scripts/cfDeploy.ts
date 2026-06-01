@@ -23,8 +23,18 @@ function runWithInput(cmd: string, args: string[], input: string): void {
 const config = loadConfig("production");
 const env = configToEnv(config);
 
-// 1. Sync all production config values to Cloudflare as secrets
-console.info("[cf:deploy] Syncing secrets to Cloudflare Workers...");
+// 1. Build the Cloudflare Workers bundle
+console.info("[cf:deploy] Building Cloudflare Workers bundle...");
+run("bun", ["x", "react-router", "build"], { env: { ...process.env, WRANGLER: "1" } });
+
+// 2. Deploy first — this clears any stale var bindings on Cloudflare before we set secrets.
+//    If a name was previously a [vars] entry and is now a secret, deploying first removes
+//    the var binding so the subsequent secret put does not conflict (code 10053).
+console.info("\n[cf:deploy] Deploying to Cloudflare Workers...");
+run("bun", ["x", "wrangler", "deploy", "--config", "build/server/wrangler.json"]);
+
+// 3. Sync all production config values to Cloudflare as secrets
+console.info("\n[cf:deploy] Syncing secrets to Cloudflare Workers...");
 for (const [key, value] of Object.entries(env)) {
   if (!value) {
     console.warn(`  [!] ${key} is empty in CONFIG.yaml production profile — skipping`);
@@ -33,13 +43,5 @@ for (const [key, value] of Object.entries(env)) {
   console.info(`  Setting ${key}...`);
   runWithInput("bun", ["x", "wrangler", "secret", "put", key], value + "\n");
 }
-
-// 2. Build the Cloudflare Workers bundle
-console.info("\n[cf:deploy] Building Cloudflare Workers bundle...");
-run("bun", ["x", "react-router", "build"], { env: { ...process.env, WRANGLER: "1" } });
-
-// 3. Deploy
-console.info("\n[cf:deploy] Deploying to Cloudflare Workers...");
-run("bun", ["x", "wrangler", "deploy", "--config", "build/server/wrangler.json"]);
 
 console.info("\n[cf:deploy] Done.");
