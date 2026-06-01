@@ -45,19 +45,23 @@ export function Layout({
   mainNavItemsRef.current = mainNavItems;
   isMainViewRef.current = isMainView;
 
-  // Drag / swipe gesture state
+  // dragX drives the outer wrapper position during a live finger drag.
+  // For swipe-navigations we navigate first (so both pages animate simultaneously)
+  // and return dragX to 0 in parallel. We skip the dragX.set(0) reset in the
+  // location-change effect for that case so the parallel animation isn't cancelled.
   const dragX = useMotionValue(0);
   const mainRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const isDragConfirmedRef = useRef(false);
-  const suppressEnterAnimation = useRef(false);
+  const isSwipeNavigatingRef = useRef(false);
 
-  // After each navigation commit, reset drag position and suppress flag.
-  // useEffect runs synchronously after React commits (before browser paint),
-  // so there is no visual frame where the new page appears at the wrong offset.
   useEffect(() => {
-    dragX.set(0);
-    suppressEnterAnimation.current = false;
+    // Button-tap navigations: reset dragX (it's already 0, this is a safety net).
+    // Swipe navigations: skip — dragX is already animating to 0 concurrently.
+    if (!isSwipeNavigatingRef.current) {
+      dragX.set(0);
+    }
+    isSwipeNavigatingRef.current = false;
   }, [location.pathname, dragX]);
 
   // Attach touchmove with { passive: false } so we can call preventDefault()
@@ -75,14 +79,12 @@ export function Layout({
       const dy = touch.clientY - dragStartRef.current.y;
 
       if (!isDragConfirmedRef.current) {
-        // Wait until movement is unambiguous
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-        // Vertical gesture — let the browser scroll normally
         if (Math.abs(dy) >= Math.abs(dx)) return;
         isDragConfirmedRef.current = true;
       }
 
-      e.preventDefault(); // safe: this listener is non-passive
+      e.preventDefault();
 
       const idx = currentMainIndexRef.current;
       const items = mainNavItemsRef.current;
@@ -129,9 +131,9 @@ export function Layout({
     if (!touch) return;
 
     const dx = touch.clientX - dragStartRef.current.x;
-    const velocity = dragX.getVelocity(); // px/s, positive = rightward
+    const velocity = dragX.getVelocity();
     const distanceThreshold = window.innerWidth * 0.35;
-    const velocityThreshold = 400; // px/s
+    const velocityThreshold = 400;
 
     const idx = currentMainIndexRef.current;
     const items = mainNavItemsRef.current;
@@ -144,19 +146,15 @@ export function Layout({
       const targetItem = items[idx + (goNext ? 1 : -1)];
       if (!targetItem) { snapBack(); return; }
 
-      const exitX = goNext ? -window.innerWidth : window.innerWidth;
-
-      // Snap current page off screen, then navigate.
-      // The useEffect on location.pathname resets dragX to 0 and clears
-      // suppressEnterAnimation after React commits the new page — all before
-      // the browser paints, so there is no visible jump.
-      void animate(dragX, exitX, { type: "tween", duration: 0.12, ease: "easeOut" }).then(() => {
-        suppressEnterAnimation.current = true;
-        setDirection(goNext ? 1 : -1);
-        void navigate(targetItem.path);
-      });
+      // Navigate immediately so the new page mounts and both pages animate concurrently:
+      // — inner AnimatePresence slides old page out and new page in (0.25s)
+      // — outer dragX returns to 0 in the same duration
+      // The user sees both pages at the same time throughout the transition.
+      isSwipeNavigatingRef.current = true;
+      setDirection(goNext ? 1 : -1);
+      void navigate(targetItem.path);
+      void animate(dragX, 0, { type: "tween", duration: 0.25, ease: "easeInOut" });
     } else if (openMenu) {
-      // Snap page back to center; MobileMenu's useEffect will animate the drawer open.
       void animate(dragX, 0, { type: "spring", stiffness: 500, damping: 40 });
       setMenuOpen(true);
     } else {
@@ -224,7 +222,7 @@ export function Layout({
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          {/* Mobile: real-time drag wrapper + animated route transitions */}
+          {/* Mobile: real-time drag wrapper + concurrent page transitions */}
           <motion.div
             className="md:hidden h-full relative overflow-hidden"
             style={{ x: dragX }}
@@ -233,12 +231,16 @@ export function Layout({
               <motion.div
                 key={animationKey}
                 initial={{
-                  x: suppressEnterAnimation.current ? 0 : (direction > 0 ? "100%" : direction < 0 ? "-100%" : 0),
-                  opacity: suppressEnterAnimation.current ? 1 : (direction === 0 ? 0 : 1),
+                  x: direction > 0 ? "100%" : direction < 0 ? "-100%" : 0,
+                  opacity: direction === 0 ? 0 : 1,
                 }}
                 animate={{ x: 0, opacity: 1 }}
-                exit={{ opacity: 0, transition: { duration: 0 } }}
-                transition={{ type: "tween", duration: 0.22, ease: "easeInOut" }}
+                exit={{
+                  x: direction > 0 ? "-100%" : direction < 0 ? "100%" : 0,
+                  opacity: direction === 0 ? 0 : 1,
+                  transition: { type: "tween", duration: direction === 0 ? 0.1 : 0.25, ease: "easeInOut" },
+                }}
+                transition={{ type: "tween", duration: 0.25, ease: "easeInOut" }}
                 className="absolute inset-0 overflow-y-auto"
               >
                 <div className="w-full max-w-[960px] mx-auto h-full">
