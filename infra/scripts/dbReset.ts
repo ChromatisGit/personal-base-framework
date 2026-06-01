@@ -1,6 +1,8 @@
-import { getDbUrl, isLocalUrl } from "./config.ts";
+import { loadConfig, configToEnv, getDbUrl, isLocalUrl } from "./config.ts";
 import { ensureDockerDb } from "./dbDocker.ts";
 import { runDbMigrations } from "./dbMigrations.ts";
+
+Object.assign(process.env, configToEnv(loadConfig("local")));
 
 const url = getDbUrl("local");
 
