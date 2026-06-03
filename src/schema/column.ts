@@ -6,6 +6,8 @@ export type Target = "shared" | "serverOnly" | "clientOnly";
 export type TsType = "string" | "number" | "boolean" | "unknown";
 
 // Runtime shape stored in every ColDef object.
+// Property names are prefixed with "is" where they would clash with builder
+// method names (nullable, primaryKey) that ColBuilder declares via extension.
 export interface ColDef<
   TNullable extends boolean = boolean,
   TTarget extends Target = Target,
@@ -14,7 +16,7 @@ export interface ColDef<
   pgType: string;
   sqliteType: string;
   isNullable: TNullable;
-  primaryKey: boolean;
+  isPrimaryKey: boolean;
   defaultValue: string | undefined;
   target: TTarget;
   // Phantom field — drives TypeScript inference in PgRow<T> / SlRow<T>.
@@ -49,7 +51,7 @@ function makeBuilder<
     nullable: () => makeBuilder({ ...def, isNullable: true as true }),
     notNull: () => makeBuilder({ ...def, isNullable: false as false }),
     default: (expr) => makeBuilder({ ...def, defaultValue: expr }),
-    primaryKey: () => makeBuilder({ ...def, primaryKey: true }),
+    primaryKey: () => makeBuilder({ ...def, isPrimaryKey: true }),
     serverOnly: () =>
       makeBuilder({ ...def, target: "serverOnly" as const }),
     clientOnly: () =>
@@ -66,7 +68,7 @@ function base<TTsType extends TsType>(
     pgType,
     sqliteType,
     isNullable: false,
-    primaryKey: false,
+    isPrimaryKey: false,
     defaultValue: undefined,
     target: "shared",
     _tsType: tsType,
@@ -90,7 +92,7 @@ export const col = {
       pgType: "TEXT",
       sqliteType: "TEXT",
       isNullable: false,
-      primaryKey: false,
+      isPrimaryKey: false,
       defaultValue: "'synced'",
       target: "clientOnly",
       _tsType: "string",
