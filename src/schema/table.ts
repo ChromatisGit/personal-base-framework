@@ -5,18 +5,18 @@ import { generateSQLiteDDL } from "./generate/sqlite.js";
 // Derive the TypeScript type for a single column.
 type ColTs<C extends ColDef> =
   C["_tsType"] extends "string"
-    ? C["nullable"] extends true
+    ? C["isNullable"] extends true
       ? string | null
       : string
     : C["_tsType"] extends "number"
-      ? C["nullable"] extends true
+      ? C["isNullable"] extends true
         ? number | null
         : number
       : C["_tsType"] extends "boolean"
-        ? C["nullable"] extends true
+        ? C["isNullable"] extends true
           ? boolean | null
           : boolean
-        : C["nullable"] extends true
+        : C["isNullable"] extends true
           ? unknown | null
           : unknown;
 

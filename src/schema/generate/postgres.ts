@@ -3,7 +3,7 @@ import type { ColDef } from "../column.js";
 function colDDL(name: string, col: ColDef): string {
   const parts: string[] = [`  ${name}`, col.pgType];
   if (col.primaryKey) parts.push("PRIMARY KEY");
-  if (!col.nullable && !col.primaryKey) parts.push("NOT NULL");
+  if (!col.isNullable && !col.primaryKey) parts.push("NOT NULL");
   if (col.defaultValue !== undefined) parts.push(`DEFAULT ${col.defaultValue}`);
   return parts.join(" ");
 }

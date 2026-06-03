@@ -13,7 +13,7 @@ export interface ColDef<
 > {
   pgType: string;
   sqliteType: string;
-  nullable: TNullable;
+  isNullable: TNullable;
   primaryKey: boolean;
   defaultValue: string | undefined;
   target: TTarget;
@@ -46,8 +46,8 @@ function makeBuilder<
 ): ColBuilder<TNullable, TTarget, TTsType> {
   return {
     ...def,
-    nullable: () => makeBuilder({ ...def, nullable: true as true }),
-    notNull: () => makeBuilder({ ...def, nullable: false as false }),
+    nullable: () => makeBuilder({ ...def, isNullable: true as true }),
+    notNull: () => makeBuilder({ ...def, isNullable: false as false }),
     default: (expr) => makeBuilder({ ...def, defaultValue: expr }),
     primaryKey: () => makeBuilder({ ...def, primaryKey: true }),
     serverOnly: () =>
@@ -65,7 +65,7 @@ function base<TTsType extends TsType>(
   return makeBuilder({
     pgType,
     sqliteType,
-    nullable: false,
+    isNullable: false,
     primaryKey: false,
     defaultValue: undefined,
     target: "shared",
@@ -89,7 +89,7 @@ export const col = {
     makeBuilder({
       pgType: "TEXT",
       sqliteType: "TEXT",
-      nullable: false,
+      isNullable: false,
       primaryKey: false,
       defaultValue: "'synced'",
       target: "clientOnly",
