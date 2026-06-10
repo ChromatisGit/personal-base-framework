@@ -1,7 +1,7 @@
 import type { WorkerRequest, WorkerReply, SqliteMigration } from "./types.js";
 import type { SqlQuery } from "./sql.js";
 
-// Client-side proxy to the SQLite SharedWorker.
+// Client-side proxy to the SQLite Worker.
 // All methods are async — they send a message and wait for the reply.
 export interface SqliteClient {
   /** Run a SELECT (or any read-only statement). Returns typed rows. */
@@ -29,43 +29,57 @@ function nextId(): string {
   return String(++_nextId);
 }
 
-function send(port: MessagePort, msg: WorkerRequest): Promise<WorkerReply> {
+function send(worker: Worker, msg: WorkerRequest): Promise<WorkerReply> {
   return new Promise((resolve, reject) => {
     const id = msg.id;
 
     function onMessage(event: MessageEvent<WorkerReply>) {
       if (event.data.id !== id) return;
-      port.removeEventListener("message", onMessage);
+      worker.removeEventListener("message", onMessage);
       resolve(event.data);
     }
 
-    port.addEventListener("message", onMessage);
-    port.postMessage(msg);
+    worker.addEventListener("message", onMessage);
+    worker.postMessage(msg);
 
     // Safety timeout — avoids hanging promises if the worker dies.
     setTimeout(() => {
-      port.removeEventListener("message", onMessage);
+      worker.removeEventListener("message", onMessage);
       reject(new Error(`[sqlite] Request ${id} timed out`));
     }, 30_000);
   });
 }
 
-// Create a SqliteClient connected to the shared SQLite worker.
-// Call once per app entry point (entry.client.tsx).
-// The worker is shared across all tabs — createSqliteClient is safe to call
-// in every tab; they all connect to the same SharedWorker instance.
-export async function createSqliteClient(
+// Module-level cache: keyed by DB name.
+// Prevents duplicate workers when React StrictMode double-invokes effects.
+const _instances = new Map<string, Promise<SqliteClient>>();
+
+// Create a SqliteClient backed by a dedicated Worker running SQLite via OPFS.
+// Each tab gets its own worker instance. The server is the source of truth,
+// so per-tab workers sync independently without cross-tab write conflicts.
+export function createSqliteClient(options: SqliteClientOptions): Promise<SqliteClient> {
+  const cached = _instances.get(options.name);
+  if (cached) return cached;
+
+  const promise = _createClient(options).catch((err) => {
+    _instances.delete(options.name); // allow retry on failure
+    throw err;
+  });
+  _instances.set(options.name, promise);
+  return promise;
+}
+
+async function _createClient(
   options: SqliteClientOptions,
 ): Promise<SqliteClient> {
   // Vite resolves `new URL(...)` statically to produce a correct worker URL
   // that points to the bundled worker chunk, even when this code runs from
   // inside node_modules/@chromatis/base.
   const workerUrl = new URL("./worker.ts", import.meta.url);
-  const shared = new SharedWorker(workerUrl, { type: "module", name: "sqlite" });
-  const port = shared.port;
+  const worker = new Worker(workerUrl, { type: "module", name: "sqlite" });
 
   // Initialize the database (migrations run on first connect only).
-  const initReply = await send(port, {
+  const initReply = await send(worker, {
     id: nextId(),
     type: "init",
     name: options.name,
@@ -82,19 +96,19 @@ export async function createSqliteClient(
 
   return {
     async query<T = Record<string, unknown>>(q: SqlQuery): Promise<T[]> {
-      const reply = await send(port, { id: nextId(), type: "query", sql: q.text, params: q.params });
+      const reply = await send(worker, { id: nextId(), type: "query", sql: q.text, params: q.params });
       assertSuccess(reply);
       return ("rows" in reply ? reply.rows : []) as T[];
     },
 
     async mutate(q: SqlQuery): Promise<number> {
-      const reply = await send(port, { id: nextId(), type: "mutate", sql: q.text, params: q.params });
+      const reply = await send(worker, { id: nextId(), type: "mutate", sql: q.text, params: q.params });
       assertSuccess(reply);
       return "changes" in reply ? reply.changes : 0;
     },
 
     async transaction(queries: SqlQuery[]): Promise<void> {
-      const reply = await send(port, {
+      const reply = await send(worker, {
         id: nextId(),
         type: "transaction",
         queries: queries.map((q) => ({ sql: q.text, params: q.params })),

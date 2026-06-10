@@ -8,6 +8,17 @@ import { ident } from "../../sqlite/sql.js";
 
 export const SYNC_COMPLETE_EVENT = "platform:synced";
 
+// sqlite-wasm bind() only accepts primitives. JSON columns arrive from the
+// server as parsed objects — stringify them back to TEXT for SQLite storage.
+function serializeForSqlite(row: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(row).map(([k, v]) => [
+      k,
+      v !== null && typeof v === "object" ? JSON.stringify(v) : v,
+    ]),
+  );
+}
+
 async function getCursors(db: SqliteClient): Promise<Record<string, number>> {
   const rows = await db.query<{ table_name: string; cursor: number }>({
     text: "SELECT table_name, cursor FROM sync_cursors",
@@ -36,7 +47,8 @@ async function mergeRows(
 ): Promise<void> {
   if (rows.length === 0) return;
 
-  const transformed = table.transform ? rows.map(table.transform) : rows;
+  const transformed = (table.transform ? rows.map(table.transform) : rows)
+    .map(serializeForSqlite);
 
   if (table.mode === "server_wins") {
     // Server row always wins — upsert directly with sync_state = 'synced'.
