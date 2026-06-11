@@ -41,9 +41,12 @@ export function Layout({
   const currentMainIndexRef = useRef(currentMainIndex);
   const mainNavItemsRef = useRef(mainNavItems);
   const isMainViewRef = useRef(isMainView);
-  currentMainIndexRef.current = currentMainIndex;
-  mainNavItemsRef.current = mainNavItems;
-  isMainViewRef.current = isMainView;
+
+  useEffect(() => {
+    currentMainIndexRef.current = currentMainIndex;
+    mainNavItemsRef.current = mainNavItems;
+    isMainViewRef.current = isMainView;
+  }, [currentMainIndex, mainNavItems, isMainView]);
 
   // dragX drives the outer wrapper position during a live finger drag.
   // For swipe-navigations we navigate first (so both pages animate simultaneously)

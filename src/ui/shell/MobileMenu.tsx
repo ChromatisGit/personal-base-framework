@@ -22,8 +22,11 @@ export function MobileMenu({ brand, isOpen, onClose, navItems, pageDragX, isFirs
   // Stable refs for use inside imperative event handlers
   const isOpenRef = useRef(isOpen);
   const isFirstTabRef = useRef(isFirstTab ?? false);
-  isOpenRef.current = isOpen;
-  isFirstTabRef.current = isFirstTab ?? false;
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    isFirstTabRef.current = isFirstTab ?? false;
+  }, [isOpen, isFirstTab]);
 
   const asideRef = useRef<HTMLElement>(null);
   const swipeStartX = useRef(0);
