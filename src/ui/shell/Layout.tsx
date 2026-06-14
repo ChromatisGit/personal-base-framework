@@ -16,6 +16,7 @@ type LayoutProps = {
   children: ReactNode;
   mobilePattern?: "top-tabs" | "bottom-tabs";
   menuNavItems?: readonly NavItem[];
+  menuFooterSlot?: ReactNode;
 };
 
 export function Layout({
@@ -25,6 +26,7 @@ export function Layout({
   children,
   mobilePattern = "top-tabs",
   menuNavItems = [],
+  menuFooterSlot,
 }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -269,7 +271,7 @@ export function Layout({
 
       {/* Mobile hamburger drawer — top-tabs pattern only */}
       {mobilePattern === "top-tabs" && (
-        <MobileMenu brand={brand} isOpen={menuOpen} onClose={() => setMenuOpen(false)} navItems={menuNavItems} pageDragX={dragX} isFirstTab={currentMainIndex === 0} />
+        <MobileMenu brand={brand} isOpen={menuOpen} onClose={() => setMenuOpen(false)} navItems={menuNavItems} pageDragX={dragX} isFirstTab={currentMainIndex === 0} footerSlot={menuFooterSlot} />
       )}
 
       <Toaster />

@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Link } from "react-router";
-import { X, Moon, Sun, LogIn } from "lucide-react";
+import { X, Moon, Sun } from "lucide-react";
 import { motion, useMotionValue, useMotionValueEvent, useTransform, animate, type MotionValue } from "motion/react";
 import { toggleTheme, type NavItem } from "./navItems.js";
 import type { SidebarBrand } from "./Sidebar.js";
@@ -12,9 +12,10 @@ interface Props {
   navItems: readonly NavItem[];
   pageDragX?: MotionValue<number>;
   isFirstTab?: boolean;
+  footerSlot?: ReactNode;
 }
 
-export function MobileMenu({ brand, isOpen, onClose, navItems, pageDragX, isFirstTab }: Props) {
+export function MobileMenu({ brand, isOpen, onClose, navItems, pageDragX, isFirstTab, footerSlot }: Props) {
   // Drawer position: 0 = fully open, -drawerWidth = fully closed
   const drawerX = useMotionValue(-300);
   const drawerWidthRef = useRef(300);
@@ -207,15 +208,7 @@ export function MobileMenu({ brand, isOpen, onClose, navItems, pageDragX, isFirs
             <span>Toggle theme</span>
           </button>
 
-          <button
-            type="button"
-            disabled
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-muted-foreground/40 cursor-not-allowed"
-            title="Login coming soon"
-          >
-            <LogIn size={18} className="flex-shrink-0" aria-hidden />
-            <span>Login</span>
-          </button>
+          {footerSlot}
         </div>
       </motion.aside>
     </>
