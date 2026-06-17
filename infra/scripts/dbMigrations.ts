@@ -35,6 +35,18 @@ export function loadMigrationFiles(
     });
 }
 
+function loadRoutineFiles(dir: string): { name: string; sql: string }[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith(".sql"))
+    .map((e) => e.name)
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => ({
+      name,
+      sql: readFileSync(path.join(dir, name), "utf8"),
+    }));
+}
+
 function loadSeedFiles(seedsDir: string): { name: string; sql: string }[] {
   if (!existsSync(seedsDir)) return [];
 
@@ -90,6 +102,7 @@ export async function applyMigrations(
 ): Promise<void> {
   await sql.begin(async (tx) => {
     await tx`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK_NAMESPACE}, ${MIGRATION_LOCK_KEY})`;
+    await tx`SET LOCAL client_min_messages = warning`;
     await ensureMigrationTable(tx);
     const applied = await getAppliedVersions(tx);
 
@@ -113,18 +126,24 @@ export async function runDbMigrations(
     seeds?: boolean;
     migrationsDir?: string;
     seedsDir?: string;
+    viewsDir?: string;
+    functionsDir?: string;
   },
 ): Promise<void> {
   const migrationsDir = options?.migrationsDir ?? path.resolve(process.cwd(), "sql/migrations");
   const seedsDir = options?.seedsDir ?? path.resolve(process.cwd(), "sql/seeds");
+  const viewsDir = options?.viewsDir ?? path.resolve(process.cwd(), "sql/views");
+  const functionsDir = options?.functionsDir ?? path.resolve(process.cwd(), "sql/functions");
   const migrations = loadMigrationFiles(migrationsDir);
   const seeds = options?.seeds ? loadSeedFiles(seedsDir) : [];
+  const routines = [...loadRoutineFiles(viewsDir), ...loadRoutineFiles(functionsDir)];
 
   const sql = postgres(databaseUrl, { max: 1 });
 
   try {
     await sql.begin(async (tx) => {
       await tx`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK_NAMESPACE}, ${MIGRATION_LOCK_KEY})`;
+      await tx`SET LOCAL client_min_messages = warning`;
       await ensureMigrationTable(tx);
 
       const applied = await getAppliedVersions(tx);
@@ -162,6 +181,14 @@ export async function runDbMigrations(
           const seedSql = seed.sql.trim();
           if (seedSql) await tx.unsafe(seedSql);
         }
+      }
+
+      for (const routine of routines) {
+        const trimmed = routine.sql.trim();
+        if (trimmed) await tx.unsafe(trimmed);
+      }
+      if (routines.length > 0) {
+        console.info(`[db] Applied ${routines.length} routine${routines.length === 1 ? "" : "s"} (views + functions).`);
       }
     });
   } finally {
