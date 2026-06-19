@@ -3,6 +3,8 @@ import path from "node:path";
 
 import postgres from "postgres";
 
+import { checkGeneratedMigrationState } from "./dbGeneratedMigrations.ts";
+
 const MIGRATION_LOCK_NAMESPACE = 23117;
 const MIGRATION_LOCK_KEY = 40873;
 
@@ -33,18 +35,6 @@ export function loadMigrationFiles(
         sql: readFileSync(path.join(migrationsDir, name), "utf8"),
       };
     });
-}
-
-function loadRoutineFiles(dir: string): { name: string; sql: string }[] {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith(".sql"))
-    .map((e) => e.name)
-    .sort((a, b) => a.localeCompare(b))
-    .map((name) => ({
-      name,
-      sql: readFileSync(path.join(dir, name), "utf8"),
-    }));
 }
 
 function loadSeedFiles(seedsDir: string): { name: string; sql: string }[] {
@@ -83,6 +73,8 @@ export async function getPendingMigrations(
   databaseUrl: string,
   migrationsDir?: string,
 ): Promise<{ pending: MigrationFile[]; sql: postgres.Sql }> {
+  checkGeneratedMigrationState();
+
   const sql = postgres(databaseUrl, { max: 1 });
   const all = loadMigrationFiles(migrationsDir);
 
@@ -126,17 +118,17 @@ export async function runDbMigrations(
     seeds?: boolean;
     migrationsDir?: string;
     seedsDir?: string;
-    viewsDir?: string;
-    functionsDir?: string;
+    checkGeneratedMigrations?: boolean;
   },
 ): Promise<void> {
+  if (options?.checkGeneratedMigrations ?? true) {
+    checkGeneratedMigrationState();
+  }
+
   const migrationsDir = options?.migrationsDir ?? path.resolve(process.cwd(), "sql/migrations");
   const seedsDir = options?.seedsDir ?? path.resolve(process.cwd(), "sql/seeds");
-  const viewsDir = options?.viewsDir ?? path.resolve(process.cwd(), "sql/views");
-  const functionsDir = options?.functionsDir ?? path.resolve(process.cwd(), "sql/functions");
   const migrations = loadMigrationFiles(migrationsDir);
   const seeds = options?.seeds ? loadSeedFiles(seedsDir) : [];
-  const routines = [...loadRoutineFiles(viewsDir), ...loadRoutineFiles(functionsDir)];
 
   const sql = postgres(databaseUrl, { max: 1 });
 
@@ -183,13 +175,6 @@ export async function runDbMigrations(
         }
       }
 
-      for (const routine of routines) {
-        const trimmed = routine.sql.trim();
-        if (trimmed) await tx.unsafe(trimmed);
-      }
-      if (routines.length > 0) {
-        console.info(`[db] Applied ${routines.length} routine${routines.length === 1 ? "" : "s"} (views + functions).`);
-      }
     });
   } finally {
     await sql.end();
