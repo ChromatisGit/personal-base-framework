@@ -3,7 +3,7 @@ import path from "node:path";
 
 import postgres from "postgres";
 
-import { checkGeneratedMigrationState } from "./dbGeneratedMigrations.ts";
+import { checkGeneratedMigrationState } from "./dbGeneratedMigrations";
 
 const MIGRATION_LOCK_NAMESPACE = 23117;
 const MIGRATION_LOCK_KEY = 40873;
@@ -14,6 +14,18 @@ export interface MigrationFile {
   filename: string;
   sql: string;
 }
+
+type MigrationSql = {
+  <TRows extends readonly (object | undefined)[] = postgres.Row[]>(
+    template: TemplateStringsArray,
+    ...parameters: readonly unknown[]
+  ): PromiseLike<TRows>;
+  unsafe<TRows extends readonly unknown[] = postgres.Row[]>(
+    query: string,
+    parameters?: readonly unknown[],
+    queryOptions?: postgres.UnsafeQueryOptions,
+  ): PromiseLike<TRows>;
+};
 
 const MIGRATION_FILE_RE = /^(\d+\.\d+\.\d+)__([a-z0-9][a-z0-9_-]*)\.sql$/i;
 
@@ -50,7 +62,11 @@ function loadSeedFiles(seedsDir: string): { name: string; sql: string }[] {
     }));
 }
 
-async function ensureMigrationTable(tx: postgres.TransactionSql): Promise<void> {
+function asMigrationSql(sql: unknown): MigrationSql {
+  return sql as MigrationSql;
+}
+
+async function ensureMigrationTable(tx: MigrationSql): Promise<void> {
   await tx`
     CREATE TABLE IF NOT EXISTS app_schema_migrations (
       version     text        PRIMARY KEY,
@@ -60,7 +76,7 @@ async function ensureMigrationTable(tx: postgres.TransactionSql): Promise<void> 
   `;
 }
 
-async function getAppliedVersions(tx: postgres.TransactionSql): Promise<Set<string>> {
+async function getAppliedVersions(tx: MigrationSql): Promise<Set<string>> {
   const rows = await tx<{ version: string }[]>`
     SELECT version FROM app_schema_migrations ORDER BY applied_at ASC, version ASC
   `;
@@ -78,7 +94,8 @@ export async function getPendingMigrations(
   const sql = postgres(databaseUrl, { max: 1 });
   const all = loadMigrationFiles(migrationsDir);
 
-  const applied = await sql.begin(async (tx) => {
+  const applied = await sql.begin(async (rawTx) => {
+    const tx = asMigrationSql(rawTx);
     await tx`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK_NAMESPACE}, ${MIGRATION_LOCK_KEY})`;
     await ensureMigrationTable(tx);
     return getAppliedVersions(tx);
@@ -92,7 +109,8 @@ export async function applyMigrations(
   sql: postgres.Sql,
   migrations: MigrationFile[],
 ): Promise<void> {
-  await sql.begin(async (tx) => {
+  await sql.begin(async (rawTx) => {
+    const tx = asMigrationSql(rawTx);
     await tx`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK_NAMESPACE}, ${MIGRATION_LOCK_KEY})`;
     await tx`SET LOCAL client_min_messages = warning`;
     await ensureMigrationTable(tx);
@@ -133,7 +151,8 @@ export async function runDbMigrations(
   const sql = postgres(databaseUrl, { max: 1 });
 
   try {
-    await sql.begin(async (tx) => {
+    await sql.begin(async (rawTx) => {
+      const tx = asMigrationSql(rawTx);
       await tx`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK_NAMESPACE}, ${MIGRATION_LOCK_KEY})`;
       await tx`SET LOCAL client_min_messages = warning`;
       await ensureMigrationTable(tx);
