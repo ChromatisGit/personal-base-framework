@@ -25,6 +25,24 @@ bun update @chromatis/base
 
 `bun install` alone does not re-fetch git dependencies that are already present.
 
+### Local development against a consuming app
+
+When changing the framework and testing against dropsort or studyluma-website locally, link instead of round-tripping through git:
+
+```sh
+# once, inside chromatis-base-framework/
+bun link
+
+# in each consuming app
+bun link @chromatis/base
+```
+
+This replaces `node_modules/@chromatis/base` in that app with a symlink to the local `chromatis-base-framework` checkout, so edits show up immediately without committing/pushing/reinstalling.
+
+Caveats:
+
+- The link is local-machine state — a fresh `bun install` in the app (or a clone elsewhere) drops back to the git dependency, so it needs redoing per machine/clone.
+- Running `bun link @chromatis/base` can also trigger Bun to bump the app's locked git commit for `@chromatis/base` in `bun.lock` if it was behind, independent of the link itself — check `bun.lock` diffs before committing while you're in this workflow.
 ## Package exports
 
 | Import path | What it provides |
