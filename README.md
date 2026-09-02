@@ -192,8 +192,11 @@ docker build -f node_modules/@chromatis/base/infra/docker/Dockerfile -t my-app .
 
 ## Architecture rules
 
-The architecture boundary checker enforces:
+Das geplante Architekturmodell, der Tech-Stack und der schrittweise Migrationspfad sind
+in [`docs/architecture.md`](docs/architecture.md) dokumentiert.
 
-- **platform** — no imports from app code
-- **core** — no imports from feature code
-- **feature A** — no imports from feature B
+Die derzeitige Architekturprüfung bildet noch die bisherigen Layer ab und erzwingt:
+
+- **platform** — keine Imports aus Anwendungscode
+- **core** — keine Imports aus Feature-Code
+- **feature A** — keine Imports aus Feature B
